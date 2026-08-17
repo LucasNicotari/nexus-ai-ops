@@ -25,6 +25,7 @@ data/processed/*
 !data/processed/.gitkeep
 data/synthetic/*
 !data/synthetic/.gitkeep
+!data/synthetic/README.md
 
 # Editors and operating systems
 .vscode/

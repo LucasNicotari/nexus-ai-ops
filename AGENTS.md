@@ -4,6 +4,8 @@
 
 Keep domain, infrastructure, API, data, ML, AI, and observability concerns clearly separated. Introduce a layer only when its responsibility is needed; avoid premature abstractions.
 
+Design stable contracts and reusable components so the event generator, ingestion, quality checks, persistence, analytics, and ML modules can support future APIs, dashboards, experiments, and automation projects without duplicating core logic.
+
 ## Code
 
 - Prefer readable, low-coupling code and small, focused functions.
@@ -31,3 +33,4 @@ Use Conventional Commits, such as `feat:`, `fix:`, `test:`, `docs:`, `refactor:`
 - Record significant architectural decisions in `docs/adr/`.
 - Before substantial changes: explain the plan and affected files, implement, validate, report results, then suggest the next step.
 - For important technologies, explain what it is, why it is used, alternatives, trade-offs, its role in NEXUS, and relevant interview talking points at an appropriate depth.
+- After completing a relevant change, explain the implementation path, validation evidence, limitations, and the architectural rationale in sufficient technical detail.

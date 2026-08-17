@@ -47,6 +47,14 @@ O gerador usa uma seed fixa por padrão, portanto produz sempre os mesmos 120 ev
 
 O CSV gerado em `data/synthetic/operational_events.csv` é um artefato local ignorado pelo Git e pode ser recriado a qualquer momento.
 
+Para experimentos temporais, geração de dashboards ou avaliação futura de modelos, gere três dias de dados em intervalos de cinco minutos. O dataset inclui ciclo diário de carga e janelas recorrentes de degradação:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/generate_temporal_training_data.py
+```
+
+Os dois datasets seguem o mesmo contrato de evento. Componentes futuros devem reutilizar esse contrato, não criar formatos paralelos.
+
 ## Ingestão de dados
 
 A ingestão atual lê o CSV e converte cada linha em um `OperationalEvent` validado. Ela exige todas as colunas do contrato, timestamps com timezone, valores numéricos válidos e `is_anomaly` como `true` ou `false`. Ainda não há persistência: a próxima etapa de qualidade de dados avaliará o conteúdo antes de introduzirmos o PostgreSQL.
