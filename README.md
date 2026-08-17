@@ -71,6 +71,14 @@ $env:RUN_POSTGRES_INTEGRATION = "1"
 pytest -m integration
 ```
 
+## Incident Analytics
+
+Nesta fase, incidentes são indicadores derivados de eventos anômalos — não uma entidade de negócio definitiva. O relatório agrega volume, média, mínimo, máximo e anomalias por métrica, além de priorizar serviços pela quantidade de sinais anômalos e críticos.
+
+```powershell
+.\.venv\Scripts\python.exe scripts/analyze_incidents.py
+```
+
 Para preparar o banco local, copie `.env.example` para `.env`, ajuste a senha local e execute:
 
 ```powershell
@@ -85,7 +93,7 @@ docker compose ps
 - [x] Data Ingestion
 - [x] Data Quality
 - [x] PostgreSQL Data Layer
-- [ ] Incident Analytics
+- [x] Incident Analytics
 - [ ] ML Prediction
 - [ ] Anomaly Detection
 - [ ] MLflow
