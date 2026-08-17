@@ -9,7 +9,9 @@ description = "Local foundation for an AI-powered IT operations and intelligence
 readme = "README.md"
 requires-python = ">=3.13"
 authors = [{ name = "Lucas Nicotari Maffei" }]
-dependencies = []
+dependencies = [
+    "psycopg[binary]>=3.2",
+]
 
 [project.optional-dependencies]
 dev = [
@@ -26,6 +28,9 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
+markers = [
+    "integration: tests that require the local PostgreSQL service",
+]
 
 [tool.ruff]
 target-version = "py313"

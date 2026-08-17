@@ -19,6 +19,7 @@ Diagrama arquitetural: reservado para uma etapa futura, após a definição dos 
 - Ruff
 - Docker Compose
 - PostgreSQL 17
+- psycopg 3
 
 ## Como executar
 
@@ -54,6 +55,22 @@ A ingestão atual lê o CSV e converte cada linha em um `OperationalEvent` valid
 
 Após a ingestão, o NEXUS avalia cada lote e produz um relatório sem interromper a análise do restante dos eventos. As regras atuais verificam IDs duplicados, ordenação temporal, métricas conhecidas e faixas plausíveis de valor. Essa separação evita confundir arquivo malformado (erro de ingestão) com dado operacional suspeito (problema de qualidade).
 
+## Camada PostgreSQL
+
+Eventos aprovados são persistidos na tabela `operational_events` do PostgreSQL local. A camada usa `psycopg` e SQL explícito, com `event_id` como chave primária e upsert para tornar reexecuções idempotentes.
+
+```powershell
+.\.venv\Scripts\python.exe scripts/generate_synthetic_events.py
+.\.venv\Scripts\python.exe scripts/load_synthetic_events.py
+```
+
+Para executar o teste de integração com o PostgreSQL do Compose:
+
+```powershell
+$env:RUN_POSTGRES_INTEGRATION = "1"
+pytest -m integration
+```
+
 Para preparar o banco local, copie `.env.example` para `.env`, ajuste a senha local e execute:
 
 ```powershell
@@ -67,7 +84,7 @@ docker compose ps
 - [x] Synthetic IT Data
 - [x] Data Ingestion
 - [x] Data Quality
-- [ ] PostgreSQL Data Layer
+- [x] PostgreSQL Data Layer
 - [ ] Incident Analytics
 - [ ] ML Prediction
 - [ ] Anomaly Detection
