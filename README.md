@@ -46,6 +46,10 @@ O gerador usa uma seed fixa por padrão, portanto produz sempre os mesmos 120 ev
 
 O CSV gerado em `data/synthetic/operational_events.csv` é um artefato local ignorado pelo Git e pode ser recriado a qualquer momento.
 
+## Ingestão de dados
+
+A ingestão atual lê o CSV e converte cada linha em um `OperationalEvent` validado. Ela exige todas as colunas do contrato, timestamps com timezone, valores numéricos válidos e `is_anomaly` como `true` ou `false`. Ainda não há persistência: a próxima etapa de qualidade de dados avaliará o conteúdo antes de introduzirmos o PostgreSQL.
+
 Para preparar o banco local, copie `.env.example` para `.env`, ajuste a senha local e execute:
 
 ```powershell
@@ -57,7 +61,7 @@ docker compose ps
 
 - [x] Environment & Project Foundation
 - [x] Synthetic IT Data
-- [ ] Data Ingestion
+- [x] Data Ingestion
 - [ ] Data Quality
 - [ ] PostgreSQL Data Layer
 - [ ] Incident Analytics
