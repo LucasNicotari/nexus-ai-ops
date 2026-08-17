@@ -6,7 +6,7 @@ NEXUS é uma plataforma local de operações e inteligência de TI orientada por
 
 ## Objetivo
 
-Construir uma base profissional e reproduzível para explorar AIOps, engenharia de dados, Machine Learning e observabilidade sem depender de serviços pagos externos.
+Construir uma base profissional e reproduzível para explorar AIOps, engenharia de dados, Machine Learning e observabilidade.
 
 ## Visão arquitetural
 
