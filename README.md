@@ -87,6 +87,14 @@ O baseline de ML usa `IsolationForest` separadamente para cada métrica. Ele apr
 .\.venv\Scripts\python.exe scripts/detect_anomalies.py
 ```
 
+## ML Prediction
+
+The supervised baseline estimates anomaly risk from metric, metric value, relative deviation from the synthetic metric baseline, service, and host. It uses a class-balanced Random Forest with four-fold stratified cross-validation and a 0.20 alert threshold to favor recall in this small, imbalanced dataset. Severity, event ID, and `is_anomaly` are excluded from features to avoid information leakage. Fixed baselines are deliberately limited to this synthetic stage; production requires rolling historical baselines.
+
+```powershell
+.\.venv\Scripts\python.exe scripts/predict_anomaly_risk.py
+```
+
 Para preparar o banco local, copie `.env.example` para `.env`, ajuste a senha local e execute:
 
 ```powershell
@@ -102,7 +110,7 @@ docker compose ps
 - [x] Data Quality
 - [x] PostgreSQL Data Layer
 - [x] Incident Analytics
-- [ ] ML Prediction
+- [x] ML Prediction
 - [x] Anomaly Detection
 - [ ] MLflow
 - [ ] FastAPI
