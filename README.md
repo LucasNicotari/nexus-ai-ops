@@ -79,6 +79,14 @@ Nesta fase, incidentes são indicadores derivados de eventos anômalos — não 
 .\.venv\Scripts\python.exe scripts/analyze_incidents.py
 ```
 
+## Anomaly Detection
+
+O baseline de ML usa `IsolationForest` separadamente para cada métrica. Ele aprende somente com os valores medidos e não usa `is_anomaly` no treinamento; o rótulo sintético serve apenas para avaliar precisão e recall. O agrupamento por métrica impede a comparação indevida entre unidades incompatíveis, como porcentagens e milissegundos.
+
+```powershell
+.\.venv\Scripts\python.exe scripts/detect_anomalies.py
+```
+
 Para preparar o banco local, copie `.env.example` para `.env`, ajuste a senha local e execute:
 
 ```powershell
@@ -95,7 +103,7 @@ docker compose ps
 - [x] PostgreSQL Data Layer
 - [x] Incident Analytics
 - [ ] ML Prediction
-- [ ] Anomaly Detection
+- [x] Anomaly Detection
 - [ ] MLflow
 - [ ] FastAPI
 - [ ] Observability
