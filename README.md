@@ -50,6 +50,10 @@ O CSV gerado em `data/synthetic/operational_events.csv` é um artefato local ign
 
 A ingestão atual lê o CSV e converte cada linha em um `OperationalEvent` validado. Ela exige todas as colunas do contrato, timestamps com timezone, valores numéricos válidos e `is_anomaly` como `true` ou `false`. Ainda não há persistência: a próxima etapa de qualidade de dados avaliará o conteúdo antes de introduzirmos o PostgreSQL.
 
+## Qualidade de dados
+
+Após a ingestão, o NEXUS avalia cada lote e produz um relatório sem interromper a análise do restante dos eventos. As regras atuais verificam IDs duplicados, ordenação temporal, métricas conhecidas e faixas plausíveis de valor. Essa separação evita confundir arquivo malformado (erro de ingestão) com dado operacional suspeito (problema de qualidade).
+
 Para preparar o banco local, copie `.env.example` para `.env`, ajuste a senha local e execute:
 
 ```powershell
@@ -62,7 +66,7 @@ docker compose ps
 - [x] Environment & Project Foundation
 - [x] Synthetic IT Data
 - [x] Data Ingestion
-- [ ] Data Quality
+- [x] Data Quality
 - [ ] PostgreSQL Data Layer
 - [ ] Incident Analytics
 - [ ] ML Prediction

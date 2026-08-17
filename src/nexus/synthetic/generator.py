@@ -46,11 +46,12 @@ def generate_operational_events(
         if is_anomaly:
             metric_value = baseline + (variation * generator.uniform(4.0, 6.0))
 
-        severity = (
-            "critical" if is_anomaly and metric_value > baseline + (variation * 5) else "warning"
-        )
-        if not is_anomaly:
-            severity = "normal"
+        if unit == "percent":
+            metric_value = min(metric_value, 100.0)
+
+        severity = "normal"
+        if is_anomaly:
+            severity = "critical" if (index + 1) % 58 == 0 else "warning"
 
         events.append(
             OperationalEvent(
