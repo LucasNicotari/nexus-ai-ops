@@ -7,10 +7,12 @@ import psycopg
 from fastapi import Depends, FastAPI, HTTPException, Query, status
 
 from nexus.api.schemas import (
+    EventIngestionResponse,
     HealthResponse,
     MetricSummaryResponse,
     ModelPredictionResponse,
     ModelRunResponse,
+    OperationalEventRequest,
     OperationalEventResponse,
     ServiceIncidentSummaryResponse,
 )
@@ -18,6 +20,7 @@ from nexus.api.security import Principal, require_reader
 from nexus.domain.operational_event import OperationalEvent
 from nexus.infrastructure.model_registry import PostgresModelRegistry
 from nexus.infrastructure.postgres import PostgresEventRepository, PostgresSettings
+from nexus.quality.validator import assess_operational_event_quality
 
 app = FastAPI(title="NEXUS AI Ops", version="0.1.0")
 
@@ -68,6 +71,23 @@ def list_events(
 ) -> list[OperationalEventResponse]:
     """Return a stable, bounded page of persisted events."""
     return [_event_response(event) for event in repository.list_events(limit=limit, offset=offset)]
+
+
+@app.post("/events", response_model=EventIngestionResponse, status_code=status.HTTP_201_CREATED)
+def ingest_events(
+    events: list[OperationalEventRequest],
+    repository: PostgresEventRepository = Depends(get_repository),
+    principal: Principal = Depends(require_reader),
+) -> EventIngestionResponse:
+    """Persist a fully valid operational-event batch through the existing quality contract."""
+    domain_events = [OperationalEvent(**event.model_dump()) for event in events]
+    report = assess_operational_event_quality(domain_events)
+    if not report.is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=[asdict(issue) for issue in report.issues],
+        )
+    return EventIngestionResponse(persisted_events=repository.upsert_events(domain_events))
 
 
 @app.get("/analytics/metrics", response_model=list[MetricSummaryResponse])
