@@ -2,8 +2,8 @@
 
 from datetime import UTC, datetime
 
-import pytest
 import psycopg
+import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
@@ -68,6 +68,7 @@ def test_repository_connection_failure_maps_to_service_unavailable(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Database connection errors are reported as an operational API failure."""
+
     def fail_connection(*args: object, **kwargs: object) -> None:
         raise psycopg.OperationalError("database unavailable")
 
