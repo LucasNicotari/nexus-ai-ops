@@ -1,5 +1,18 @@
 # NEXUS AI Ops
 
+## Database migrations
+
+The PostgreSQL schema is versioned with Alembic. After starting the local database, apply the
+current schema revision before loading events, training models, or serving the API:
+
+```powershell
+docker compose up -d postgres
+python -m alembic upgrade head
+```
+
+Repositories do not create tables. This keeps DDL auditable and prevents application versions from
+silently mutating a shared database.
+
 🚧 **Em desenvolvimento**
 
 NEXUS é uma plataforma local de operações e inteligência de TI orientada por IA. O projeto evoluirá incrementalmente para coletar, validar, armazenar e analisar dados sintéticos de operações, detectar anomalias e apoiar a investigação de incidentes.

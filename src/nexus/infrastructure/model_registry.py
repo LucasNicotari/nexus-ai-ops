@@ -13,32 +13,6 @@ from nexus.infrastructure.postgres import PostgresSettings
 from nexus.ml.risk_prediction import PredictionEvaluation
 from nexus.ml.temporal_risk import TemporalRiskPrediction
 
-_SCHEMA_SQL = """
-CREATE TABLE IF NOT EXISTS model_runs (
-    model_run_id UUID PRIMARY KEY,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    model_name TEXT NOT NULL,
-    artifact_path TEXT NOT NULL,
-    alert_threshold DOUBLE PRECISION NOT NULL,
-    training_event_count INTEGER NOT NULL,
-    validation_precision DOUBLE PRECISION NOT NULL,
-    validation_recall DOUBLE PRECISION NOT NULL,
-    validation_f1 DOUBLE PRECISION NOT NULL,
-    test_precision DOUBLE PRECISION NOT NULL,
-    test_recall DOUBLE PRECISION NOT NULL,
-    test_f1 DOUBLE PRECISION NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS model_predictions (
-    model_run_id UUID NOT NULL REFERENCES model_runs(model_run_id),
-    event_id TEXT NOT NULL,
-    risk_score DOUBLE PRECISION NOT NULL,
-    predicted_anomaly BOOLEAN NOT NULL,
-    expected_anomaly BOOLEAN,
-    PRIMARY KEY (model_run_id, event_id)
-);
-"""
-
 
 @dataclass(frozen=True, slots=True)
 class ModelRun:
@@ -92,12 +66,6 @@ class PostgresModelRegistry:
     def connect(cls, settings: PostgresSettings) -> PostgresModelRegistry:
         """Create a registry using the project's local PostgreSQL connection settings."""
         return cls(psycopg.connect(settings.connection_string()))
-
-    def initialize_schema(self) -> None:
-        """Create the model registry tables if they do not already exist."""
-        with self._connection.cursor() as cursor:
-            cursor.execute(_SCHEMA_SQL)
-        self._connection.commit()
 
     def save_run(self, model_run: ModelRun) -> None:
         """Persist model metadata and validation evidence."""

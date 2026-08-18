@@ -42,7 +42,6 @@ def main() -> None:
 
     registry = PostgresModelRegistry.connect(PostgresSettings.from_environment())
     try:
-        registry.initialize_schema()
         registry.save_run(
             ModelRun(
                 model_run_id=model_run_id,
