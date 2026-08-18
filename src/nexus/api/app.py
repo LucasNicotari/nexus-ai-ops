@@ -14,6 +14,7 @@ from nexus.api.schemas import (
     OperationalEventResponse,
     ServiceIncidentSummaryResponse,
 )
+from nexus.api.security import Principal, require_reader
 from nexus.domain.operational_event import OperationalEvent
 from nexus.infrastructure.model_registry import PostgresModelRegistry
 from nexus.infrastructure.postgres import PostgresEventRepository, PostgresSettings
@@ -63,6 +64,7 @@ def list_events(
     limit: int = Query(default=100, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     repository: PostgresEventRepository = Depends(get_repository),
+    principal: Principal = Depends(require_reader),
 ) -> list[OperationalEventResponse]:
     """Return a stable, bounded page of persisted events."""
     return [_event_response(event) for event in repository.list_events(limit=limit, offset=offset)]
@@ -71,6 +73,7 @@ def list_events(
 @app.get("/analytics/metrics", response_model=list[MetricSummaryResponse])
 def metric_summaries(
     repository: PostgresEventRepository = Depends(get_repository),
+    principal: Principal = Depends(require_reader),
 ) -> list[MetricSummaryResponse]:
     """Return aggregate signal quality and anomaly volume by metric."""
     return [MetricSummaryResponse(**asdict(summary)) for summary in repository.metric_summaries()]
@@ -79,6 +82,7 @@ def metric_summaries(
 @app.get("/analytics/services", response_model=list[ServiceIncidentSummaryResponse])
 def service_incident_summaries(
     repository: PostgresEventRepository = Depends(get_repository),
+    principal: Principal = Depends(require_reader),
 ) -> list[ServiceIncidentSummaryResponse]:
     """Return anomaly-derived incident indicators by service."""
     return [
@@ -91,6 +95,7 @@ def service_incident_summaries(
 def list_model_runs(
     limit: int = Query(default=20, ge=1, le=100),
     registry: PostgresModelRegistry = Depends(get_model_registry),
+    principal: Principal = Depends(require_reader),
 ) -> list[ModelRunResponse]:
     """Return persisted model runs and their evaluation evidence."""
     return [ModelRunResponse(**asdict(run)) for run in registry.list_runs(limit=limit)]
@@ -101,6 +106,7 @@ def list_model_predictions(
     model_run_id: str,
     limit: int = Query(default=100, ge=1, le=500),
     registry: PostgresModelRegistry = Depends(get_model_registry),
+    principal: Principal = Depends(require_reader),
 ) -> list[ModelPredictionResponse]:
     """Return stored held-out predictions for one model run."""
     try:

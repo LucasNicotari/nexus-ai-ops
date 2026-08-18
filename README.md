@@ -135,6 +135,14 @@ The initial FastAPI layer is read-only and exposes data already persisted in Pos
 
 Available routes: `GET /health`, `GET /events?limit=100&offset=0`, `GET /analytics/metrics`, `GET /analytics/services`, and interactive documentation at `/docs`.
 
+## API access control
+
+`/health` remains public for container orchestration. Every operational and ML read endpoint fails
+closed unless it receives a configured `X-NEXUS-API-Key` with the `reader` role. Set
+`NEXUS_API_KEYS` in `.env` as comma-separated `api-key:role` entries, then send the key only in
+the request header. This is a local machine-to-machine control plane; a future identity-provider
+integration can replace the credential source without changing endpoint authorization rules.
+
 ## Model registry
 
 The temporal model can be trained and registered locally. The serialized `joblib` artifact stays in `data/models/`, while the run metadata, evaluation metrics, and held-out predictions are stored in PostgreSQL and exposed by the API.
