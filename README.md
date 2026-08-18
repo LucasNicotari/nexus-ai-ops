@@ -133,6 +133,10 @@ The temporal model can be trained and registered locally. The serialized `joblib
 
 Read registered runs at `GET /ml/runs` and their persisted predictions at `GET /ml/runs/{model_run_id}/predictions`.
 
+## Continuous Integration
+
+GitHub Actions runs tests, Ruff lint, and Ruff format checks on every push and on pull requests targeting `main`. PostgreSQL integration tests remain opt-in and are not run in CI until the workflow provisions a database service.
+
 Para preparar o banco local, copie `.env.example` para `.env`, ajuste a senha local e execute:
 
 ```powershell
