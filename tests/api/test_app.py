@@ -70,8 +70,9 @@ class FakeModelRegistry:
 
 
 @pytest.fixture
-def client() -> TestClient:
+def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     """Provide an API client backed by deterministic repository responses."""
+    monkeypatch.setenv("NEXUS_API_KEYS", "test-reader-key:reader")
     app.dependency_overrides[get_repository] = lambda: FakeRepository()
     app.dependency_overrides[get_model_registry] = lambda: FakeModelRegistry()
     with TestClient(app) as test_client:
@@ -84,23 +85,46 @@ def test_health_returns_ok_when_database_is_reachable(client: TestClient) -> Non
 
 
 def test_events_are_paginated_and_serialized(client: TestClient) -> None:
-    response = client.get("/events?limit=1&offset=0")
+    response = client.get("/events?limit=1&offset=0", headers=_reader_headers())
 
     assert response.status_code == 200
     assert response.json()[0]["event_id"] == "evt-000001"
 
 
 def test_metric_and_service_analytics_are_exposed(client: TestClient) -> None:
-    assert client.get("/analytics/metrics").json()[0]["metric_name"] == "cpu_usage_percent"
-    assert client.get("/analytics/services").json()[0]["service"] == "customer-api"
+    assert (
+        client.get("/analytics/metrics", headers=_reader_headers()).json()[0]["metric_name"]
+        == "cpu_usage_percent"
+    )
+    assert (
+        client.get("/analytics/services", headers=_reader_headers()).json()[0]["service"]
+        == "customer-api"
+    )
 
 
 def test_persisted_model_results_are_exposed(client: TestClient) -> None:
-    run = client.get("/ml/runs").json()[0]
-    predictions = client.get(f"/ml/runs/{run['model_run_id']}/predictions").json()
+    run = client.get("/ml/runs", headers=_reader_headers()).json()[0]
+    predictions = client.get(
+        f"/ml/runs/{run['model_run_id']}/predictions", headers=_reader_headers()
+    ).json()
 
     assert run["test_f1"] == 1.0
     assert predictions[0]["risk_score"] == 0.9
+
+
+def test_protected_routes_fail_closed_without_api_key(client: TestClient) -> None:
+    response = client.get("/events")
+
+    assert response.status_code == 401
+    assert response.headers["www-authenticate"] == "ApiKey"
+
+
+def test_protected_routes_reject_unknown_api_key(client: TestClient) -> None:
+    assert client.get("/events", headers={"X-NEXUS-API-Key": "wrong-key"}).status_code == 401
+
+
+def _reader_headers() -> dict[str, str]:
+    return {"X-NEXUS-API-Key": "test-reader-key"}
 
 
 def test_repository_connection_failure_maps_to_service_unavailable(
