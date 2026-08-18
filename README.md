@@ -112,6 +112,16 @@ The temporal pipeline derives lag, rolling mean, rolling standard deviation, dev
 .\.venv\Scripts\python.exe scripts/evaluate_temporal_risk.py
 ```
 
+## API
+
+The initial FastAPI layer is read-only and exposes data already persisted in PostgreSQL. It does not train ML models during HTTP requests.
+
+```powershell
+.\.venv\Scripts\uvicorn.exe nexus.api.app:app --reload
+```
+
+Available routes: `GET /health`, `GET /events?limit=100&offset=0`, `GET /analytics/metrics`, `GET /analytics/services`, and interactive documentation at `/docs`.
+
 Para preparar o banco local, copie `.env.example` para `.env`, ajuste a senha local e execute:
 
 ```powershell
@@ -130,7 +140,7 @@ docker compose ps
 - [x] ML Prediction
 - [x] Anomaly Detection
 - [ ] MLflow
-- [ ] FastAPI
+- [x] FastAPI
 - [ ] Observability
 - [ ] Local AI Assistant
 - [ ] AIOps Intelligence

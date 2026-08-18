@@ -137,6 +137,40 @@ class PostgresEventRepository:
         """Release the database connection."""
         self._connection.close()
 
+    def is_healthy(self) -> bool:
+        """Confirm that PostgreSQL accepts a basic query."""
+        with self._connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            return cursor.fetchone()[0] == 1
+
+    def list_events(self, *, limit: int, offset: int) -> list[OperationalEvent]:
+        """Return a stable page of persisted operational events."""
+        query = """
+        SELECT event_id, occurred_at, host, service, metric_name, metric_value, unit, severity,
+               is_anomaly
+        FROM operational_events
+        ORDER BY occurred_at, event_id
+        LIMIT %s OFFSET %s;
+        """
+        with self._connection.cursor() as cursor:
+            cursor.execute(query, (limit, offset))
+            rows = cursor.fetchall()
+
+        return [
+            OperationalEvent(
+                event_id=row[0],
+                occurred_at=row[1],
+                host=row[2],
+                service=row[3],
+                metric_name=row[4],
+                metric_value=float(row[5]),
+                unit=row[6],
+                severity=row[7],
+                is_anomaly=row[8],
+            )
+            for row in rows
+        ]
+
     def metric_summaries(self) -> list[MetricSummary]:
         """Aggregate event volumes, ranges, and anomalies by metric."""
         query = """
