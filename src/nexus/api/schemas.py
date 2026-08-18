@@ -1,6 +1,7 @@
 """Public response schemas for the NEXUS API."""
 
 from datetime import datetime
+from uuid import UUID
 
 from pydantic import BaseModel
 
@@ -35,3 +36,25 @@ class ServiceIncidentSummaryResponse(BaseModel):
     anomalous_event_count: int
     critical_event_count: int
     last_anomaly_at: datetime
+
+
+class ModelRunResponse(BaseModel):
+    model_run_id: UUID
+    created_at: datetime
+    model_name: str
+    artifact_path: str
+    alert_threshold: float
+    training_event_count: int
+    validation_precision: float
+    validation_recall: float
+    validation_f1: float
+    test_precision: float
+    test_recall: float
+    test_f1: float
+
+
+class ModelPredictionResponse(BaseModel):
+    event_id: str
+    risk_score: float
+    predicted_anomaly: bool
+    expected_anomaly: bool | None

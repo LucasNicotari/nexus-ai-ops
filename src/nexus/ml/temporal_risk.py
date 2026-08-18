@@ -33,6 +33,19 @@ class TemporalRiskReport:
     test_predictions: list[TemporalRiskPrediction]
 
 
+@dataclass(slots=True)
+class TemporalRiskInferenceModel:
+    """Serializable trained pipeline and threshold for repeatable inference."""
+
+    pipeline: Pipeline
+    alert_threshold: float
+
+    def predict(self, records: Sequence[TemporalFeatureRecord]) -> list[TemporalRiskPrediction]:
+        """Score feature records without retraining the underlying pipeline."""
+        scores = self.pipeline.predict_proba(_features_for_all(records))[:, 1]
+        return _predictions_for(records, scores, self.alert_threshold)
+
+
 class TemporalAnomalyRiskClassifier:
     """Train on the past, select on validation, and evaluate only on future data."""
 
@@ -67,6 +80,15 @@ class TemporalAnomalyRiskClassifier:
             test_evaluation=_evaluate(test_predictions),
             test_predictions=test_predictions,
         )
+
+    def train_for_inference(
+        self, records: Sequence[TemporalFeatureRecord], *, alert_threshold: float
+    ) -> TemporalRiskInferenceModel:
+        """Fit a serializable model using records selected before the final test period."""
+        self._validate_partition_labels(records, "training")
+        pipeline = self._build_pipeline()
+        pipeline.fit(_features_for_all(records), _labels_for_all(records))
+        return TemporalRiskInferenceModel(pipeline=pipeline, alert_threshold=alert_threshold)
 
     def _build_pipeline(self) -> Pipeline:
         return Pipeline(

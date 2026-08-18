@@ -122,6 +122,17 @@ The initial FastAPI layer is read-only and exposes data already persisted in Pos
 
 Available routes: `GET /health`, `GET /events?limit=100&offset=0`, `GET /analytics/metrics`, `GET /analytics/services`, and interactive documentation at `/docs`.
 
+## Model registry
+
+The temporal model can be trained and registered locally. The serialized `joblib` artifact stays in `data/models/`, while the run metadata, evaluation metrics, and held-out predictions are stored in PostgreSQL and exposed by the API.
+
+```powershell
+.\.venv\Scripts\python.exe scripts/generate_temporal_training_data.py
+.\.venv\Scripts\python.exe scripts/train_and_register_temporal_model.py
+```
+
+Read registered runs at `GET /ml/runs` and their persisted predictions at `GET /ml/runs/{model_run_id}/predictions`.
+
 Para preparar o banco local, copie `.env.example` para `.env`, ajuste a senha local e execute:
 
 ```powershell

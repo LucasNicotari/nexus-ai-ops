@@ -9,10 +9,13 @@ from fastapi import Depends, FastAPI, HTTPException, Query, status
 from nexus.api.schemas import (
     HealthResponse,
     MetricSummaryResponse,
+    ModelPredictionResponse,
+    ModelRunResponse,
     OperationalEventResponse,
     ServiceIncidentSummaryResponse,
 )
 from nexus.domain.operational_event import OperationalEvent
+from nexus.infrastructure.model_registry import PostgresModelRegistry
 from nexus.infrastructure.postgres import PostgresEventRepository, PostgresSettings
 
 app = FastAPI(title="NEXUS AI Ops", version="0.1.0")
@@ -28,6 +31,18 @@ def get_repository() -> Generator[PostgresEventRepository]:
         yield repository
     finally:
         repository.close()
+
+
+def get_model_registry() -> Generator[PostgresModelRegistry]:
+    """Provide a request-scoped registry for persisted ML metadata."""
+    try:
+        registry = PostgresModelRegistry.connect(PostgresSettings.from_environment())
+    except psycopg.Error as error:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE) from error
+    try:
+        yield registry
+    finally:
+        registry.close()
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -69,6 +84,34 @@ def service_incident_summaries(
     return [
         ServiceIncidentSummaryResponse(**asdict(summary))
         for summary in repository.service_incident_summaries()
+    ]
+
+
+@app.get("/ml/runs", response_model=list[ModelRunResponse])
+def list_model_runs(
+    limit: int = Query(default=20, ge=1, le=100),
+    registry: PostgresModelRegistry = Depends(get_model_registry),
+) -> list[ModelRunResponse]:
+    """Return persisted model runs and their evaluation evidence."""
+    return [ModelRunResponse(**asdict(run)) for run in registry.list_runs(limit=limit)]
+
+
+@app.get("/ml/runs/{model_run_id}/predictions", response_model=list[ModelPredictionResponse])
+def list_model_predictions(
+    model_run_id: str,
+    limit: int = Query(default=100, ge=1, le=500),
+    registry: PostgresModelRegistry = Depends(get_model_registry),
+) -> list[ModelPredictionResponse]:
+    """Return stored held-out predictions for one model run."""
+    try:
+        from uuid import UUID
+
+        parsed_model_run_id = UUID(model_run_id)
+    except ValueError as error:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY) from error
+    return [
+        ModelPredictionResponse(**asdict(prediction))
+        for prediction in registry.list_predictions(parsed_model_run_id, limit=limit)
     ]
 
 
