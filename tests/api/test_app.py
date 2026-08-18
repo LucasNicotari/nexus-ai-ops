@@ -3,6 +3,8 @@
 from datetime import UTC, datetime
 
 import pytest
+import psycopg
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from nexus.api.app import app, get_repository
@@ -60,3 +62,18 @@ def test_events_are_paginated_and_serialized(client: TestClient) -> None:
 def test_metric_and_service_analytics_are_exposed(client: TestClient) -> None:
     assert client.get("/analytics/metrics").json()[0]["metric_name"] == "cpu_usage_percent"
     assert client.get("/analytics/services").json()[0]["service"] == "customer-api"
+
+
+def test_repository_connection_failure_maps_to_service_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Database connection errors are reported as an operational API failure."""
+    def fail_connection(*args: object, **kwargs: object) -> None:
+        raise psycopg.OperationalError("database unavailable")
+
+    monkeypatch.setattr("nexus.api.app.PostgresEventRepository.connect", fail_connection)
+
+    with pytest.raises(HTTPException, match="503") as error:
+        next(get_repository())
+
+    assert error.value.status_code == 503

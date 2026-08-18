@@ -20,7 +20,10 @@ app = FastAPI(title="NEXUS AI Ops", version="0.1.0")
 
 def get_repository() -> Generator[PostgresEventRepository]:
     """Provide a request-scoped PostgreSQL repository."""
-    repository = PostgresEventRepository.connect(PostgresSettings.from_environment())
+    try:
+        repository = PostgresEventRepository.connect(PostgresSettings.from_environment())
+    except psycopg.Error as error:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE) from error
     try:
         yield repository
     finally:
