@@ -12,10 +12,7 @@ from nexus.quality.validator import QualityReport, assess_operational_event_qual
 
 
 class EventRepository(Protocol):
-    """Persistence capability needed by the event loading workflow."""
-
-    def initialize_schema(self) -> None:
-        """Prepare the event storage structure."""
+    """Persistence capability needed after database migrations have run."""
 
     def upsert_events(self, events: list[OperationalEvent]) -> int:
         """Store a batch of validated events."""
@@ -39,6 +36,5 @@ def load_quality_approved_events(path: Path, repository: EventRepository) -> Loa
             f"Refusing to persist a batch with {len(quality_report.issues)} quality issue(s)"
         )
 
-    repository.initialize_schema()
     persisted_events = repository.upsert_events(events)
     return LoadResult(persisted_events=persisted_events, quality_report=quality_report)

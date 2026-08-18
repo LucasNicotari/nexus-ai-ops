@@ -11,20 +11,6 @@ import psycopg
 
 from nexus.domain.operational_event import OperationalEvent
 
-_SCHEMA_SQL = """
-CREATE TABLE IF NOT EXISTS operational_events (
-    event_id TEXT PRIMARY KEY,
-    occurred_at TIMESTAMPTZ NOT NULL,
-    host TEXT NOT NULL,
-    service TEXT NOT NULL,
-    metric_name TEXT NOT NULL,
-    metric_value DOUBLE PRECISION NOT NULL CHECK (metric_value >= 0),
-    unit TEXT NOT NULL,
-    severity TEXT NOT NULL CHECK (severity IN ('normal', 'warning', 'critical')),
-    is_anomaly BOOLEAN NOT NULL
-);
-"""
-
 _UPSERT_SQL = """
 INSERT INTO operational_events (
     event_id, occurred_at, host, service, metric_name, metric_value, unit, severity, is_anomaly
@@ -102,12 +88,6 @@ class PostgresEventRepository:
     def connect(cls, settings: PostgresSettings) -> PostgresEventRepository:
         """Create a repository backed by the configured PostgreSQL service."""
         return cls(psycopg.connect(settings.connection_string()))
-
-    def initialize_schema(self) -> None:
-        """Create the minimal event table when it does not exist."""
-        with self._connection.cursor() as cursor:
-            cursor.execute(_SCHEMA_SQL)
-        self._connection.commit()
 
     def upsert_events(self, events: Sequence[OperationalEvent]) -> int:
         """Insert or update a batch of events by event identifier."""
