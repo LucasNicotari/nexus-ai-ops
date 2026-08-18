@@ -103,6 +103,15 @@ The supervised baseline estimates anomaly risk from metric, metric value, relati
 .\.venv\Scripts\python.exe scripts/predict_anomaly_risk.py
 ```
 
+## Temporal validation
+
+The temporal pipeline derives lag, rolling mean, rolling standard deviation, deviation from the prior window, and hour-of-day features. It splits whole timestamps into train (60%), validation (20%), and test (20%) partitions. The alert threshold is selected on validation only; test data remains isolated until final evaluation.
+
+```powershell
+.\.venv\Scripts\python.exe scripts/generate_temporal_training_data.py
+.\.venv\Scripts\python.exe scripts/evaluate_temporal_risk.py
+```
+
 Para preparar o banco local, copie `.env.example` para `.env`, ajuste a senha local e execute:
 
 ```powershell
