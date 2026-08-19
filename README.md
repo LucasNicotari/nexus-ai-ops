@@ -165,6 +165,13 @@ docker compose up -d
 docker compose ps
 ```
 
+## MVP technical completion
+
+This MVP is complete for local, authenticated operational-event ingestion, persistence, analysis,
+ML experimentation, and read access. It is intentionally not a production AIOps platform: external
+telemetry connectors, SSO, alert delivery, automated remediation, and managed model lifecycle are
+separate future products with their own operational requirements.
+
 ## Roadmap
 
 - [x] Environment & Project Foundation
@@ -177,9 +184,9 @@ docker compose ps
 - [x] Anomaly Detection
 - [ ] MLflow
 - [x] FastAPI
-- [ ] Observability
+- [x] API request correlation and structured completion logs
 - [ ] Local AI Assistant
 - [ ] AIOps Intelligence
-- [ ] Automated Tests
-- [ ] CI/CD
-- [ ] Production-like Local Environment
+- [x] Automated Tests
+- [x] CI with PostgreSQL integration
+- [x] Production-like local database environment
