@@ -22,6 +22,14 @@ class OperationalEventResponse(BaseModel):
     is_anomaly: bool
 
 
+class OperationalEventRequest(OperationalEventResponse):
+    """Validated HTTP representation of one operational event."""
+
+
+class EventIngestionResponse(BaseModel):
+    persisted_events: int
+
+
 class MetricSummaryResponse(BaseModel):
     metric_name: str
     event_count: int

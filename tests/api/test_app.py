@@ -34,6 +34,9 @@ class FakeRepository:
         )
         return [event][offset : offset + limit]
 
+    def upsert_events(self, events: list[OperationalEvent]) -> int:
+        return len(events)
+
     def metric_summaries(self) -> list[MetricSummary]:
         return [MetricSummary("cpu_usage_percent", 1, 45.0, 45.0, 45.0, 0)]
 
@@ -121,6 +124,51 @@ def test_protected_routes_fail_closed_without_api_key(client: TestClient) -> Non
 
 def test_protected_routes_reject_unknown_api_key(client: TestClient) -> None:
     assert client.get("/events", headers={"X-NEXUS-API-Key": "wrong-key"}).status_code == 401
+
+
+def test_authenticated_ingestion_persists_a_valid_batch(client: TestClient) -> None:
+    response = client.post(
+        "/events",
+        headers=_reader_headers(),
+        json=[
+            {
+                "event_id": "evt-http-001",
+                "occurred_at": "2026-01-01T00:00:00+00:00",
+                "host": "app-01",
+                "service": "customer-api",
+                "metric_name": "cpu_usage_percent",
+                "metric_value": 45.0,
+                "unit": "percent",
+                "severity": "normal",
+                "is_anomaly": False,
+            }
+        ],
+    )
+
+    assert response.status_code == 201
+    assert response.json() == {"persisted_events": 1}
+
+
+def test_authenticated_ingestion_rejects_an_invalid_batch(client: TestClient) -> None:
+    response = client.post(
+        "/events",
+        headers=_reader_headers(),
+        json=[
+            {
+                "event_id": "evt-http-invalid",
+                "occurred_at": "2026-01-01T00:00:00+00:00",
+                "host": "app-01",
+                "service": "customer-api",
+                "metric_name": "unknown_metric",
+                "metric_value": 45.0,
+                "unit": "percent",
+                "severity": "normal",
+                "is_anomaly": False,
+            }
+        ],
+    )
+
+    assert response.status_code == 422
 
 
 def _reader_headers() -> dict[str, str]:
