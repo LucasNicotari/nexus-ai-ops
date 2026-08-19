@@ -172,6 +172,21 @@ ML experimentation, and read access. It is intentionally not a production AIOps 
 telemetry connectors, SSO, alert delivery, automated remediation, and managed model lifecycle are
 separate future products with their own operational requirements.
 
+## Local observability dashboard
+
+Prometheus collects request volume and latency from `GET /metrics`; Grafana provisions the
+`NEXUS API Overview` dashboard automatically. Start the API on the host, then start the optional
+observability profile:
+
+```powershell
+.\.venv\Scripts\uvicorn.exe nexus.api.app:app --reload
+docker compose --profile observability up -d
+```
+
+Open Grafana at `http://localhost:3000` and Prometheus at `http://localhost:9090`. The dashboard
+shows request rate, p95 latency, and request volume by route and response status. Change the local
+Grafana password in `.env` before using it beyond a private demonstration.
+
 ## Roadmap
 
 - [x] Environment & Project Foundation

@@ -93,6 +93,15 @@ def test_health_returns_a_request_identifier(client: TestClient) -> None:
     assert response.headers["X-Request-ID"] == "trace-001"
 
 
+def test_metrics_endpoint_exposes_nexus_request_metrics(client: TestClient) -> None:
+    client.get("/health")
+
+    response = client.get("/metrics")
+
+    assert response.status_code == 200
+    assert "nexus_api_requests_total" in response.text
+
+
 def test_events_are_paginated_and_serialized(client: TestClient) -> None:
     response = client.get("/events?limit=1&offset=0", headers=_reader_headers())
 
