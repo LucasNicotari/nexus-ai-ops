@@ -1,6 +1,8 @@
 """Integration test for the local PostgreSQL event repository."""
 
 import os
+from dataclasses import replace
+from uuid import uuid4
 
 import pytest
 from alembic import command
@@ -38,7 +40,14 @@ def test_repository_builds_incident_analytics() -> None:
     upgrade_database()
     repository = PostgresEventRepository.connect(PostgresSettings.from_environment())
     try:
-        repository.upsert_events(generate_operational_events())
+        initial_anomaly_count = sum(
+            summary.anomaly_count for summary in repository.metric_summaries()
+        )
+        test_events = [
+            replace(event, event_id=f"integration-{uuid4()}-{event.event_id}")
+            for event in generate_operational_events()
+        ]
+        repository.upsert_events(test_events)
 
         metric_summaries = repository.metric_summaries()
         service_summaries = repository.service_incident_summaries()
@@ -46,5 +55,5 @@ def test_repository_builds_incident_analytics() -> None:
         repository.close()
 
     assert len(metric_summaries) == 4
-    assert sum(summary.anomaly_count for summary in metric_summaries) == 4
+    assert sum(summary.anomaly_count for summary in metric_summaries) == initial_anomaly_count + 4
     assert service_summaries
