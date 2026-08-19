@@ -184,8 +184,10 @@ docker compose --profile observability up -d
 ```
 
 Open Grafana at `http://localhost:3000` and Prometheus at `http://localhost:9090`. The dashboard
-shows request rate, p95 latency, and request volume by route and response status. Change the local
-Grafana password in `.env` before using it beyond a private demonstration.
+shows request rate, p95 latency, request volume by route/status, persisted events, anomalous events,
+and services with critical signals. Grafana reads operational panels directly from the local
+PostgreSQL database. Change the local Grafana password in `.env` before using it beyond a private
+demonstration.
 
 ## Roadmap
 
