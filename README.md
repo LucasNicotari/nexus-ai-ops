@@ -189,6 +189,23 @@ and services with critical signals. Grafana reads operational panels directly fr
 PostgreSQL database. Change the local Grafana password in `.env` before using it beyond a private
 demonstration.
 
+### Demonstration setup
+
+With PostgreSQL running, this command applies migrations, generates the deterministic three-day
+dataset, sends it through the same quality gate used by HTTP ingestion, persists it, and registers
+a temporal model run. It uses UPSERT and does not delete existing records.
+
+```powershell
+.\.venv\Scripts\python.exe scripts/run_demo.py
+```
+
+Then run the API and optional observability stack:
+
+```powershell
+.\.venv\Scripts\uvicorn.exe nexus.api.app:app --reload
+docker compose --profile observability up -d
+```
+
 ## Roadmap
 
 - [x] Environment & Project Foundation
