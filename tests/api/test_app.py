@@ -87,6 +87,12 @@ def test_health_returns_ok_when_database_is_reachable(client: TestClient) -> Non
     assert client.get("/health").json() == {"status": "ok"}
 
 
+def test_health_returns_a_request_identifier(client: TestClient) -> None:
+    response = client.get("/health", headers={"X-Request-ID": "trace-001"})
+
+    assert response.headers["X-Request-ID"] == "trace-001"
+
+
 def test_events_are_paginated_and_serialized(client: TestClient) -> None:
     response = client.get("/events?limit=1&offset=0", headers=_reader_headers())
 

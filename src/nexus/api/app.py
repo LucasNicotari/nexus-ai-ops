@@ -6,6 +6,7 @@ from dataclasses import asdict
 import psycopg
 from fastapi import Depends, FastAPI, HTTPException, Query, status
 
+from nexus.api.observability import request_observability
 from nexus.api.schemas import (
     EventIngestionResponse,
     HealthResponse,
@@ -23,6 +24,7 @@ from nexus.infrastructure.postgres import PostgresEventRepository, PostgresSetti
 from nexus.quality.validator import assess_operational_event_quality
 
 app = FastAPI(title="NEXUS AI Ops", version="0.1.0")
+app.middleware("http")(request_observability)
 
 
 def get_repository() -> Generator[PostgresEventRepository]:
