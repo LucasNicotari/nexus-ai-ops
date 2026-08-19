@@ -12,6 +12,33 @@
       "type": "timeseries"
     },
     {
+      "datasource": "NEXUS PostgreSQL",
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}, "unit": "short"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 16},
+      "id": 4,
+      "targets": [{"format": "table", "rawSql": "SELECT COUNT(*) AS total_events FROM operational_events", "refId": "A"}],
+      "title": "Persisted operational events",
+      "type": "stat"
+    },
+    {
+      "datasource": "NEXUS PostgreSQL",
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}, "unit": "short"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 16},
+      "id": 5,
+      "targets": [{"format": "table", "rawSql": "SELECT COUNT(*) AS anomalous_events FROM operational_events WHERE is_anomaly", "refId": "A"}],
+      "title": "Anomalous events",
+      "type": "stat"
+    },
+    {
+      "datasource": "NEXUS PostgreSQL",
+      "fieldConfig": {"defaults": {}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 16},
+      "id": 6,
+      "targets": [{"format": "table", "rawSql": "SELECT service, COUNT(*) AS anomalous_events, COUNT(*) FILTER (WHERE severity = 'critical') AS critical_events FROM operational_events WHERE is_anomaly GROUP BY service ORDER BY critical_events DESC, anomalous_events DESC", "refId": "A"}],
+      "title": "Services with anomalous signals",
+      "type": "table"
+    },
+    {
       "datasource": "Prometheus",
       "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
