@@ -1,238 +1,144 @@
 # NEXUS AI Ops
 
-## Database migrations
+> MVP local de AIOps para transformar eventos operacionais sintéticos em dados validados, análises, sinais de risco de ML e uma API observável.
 
-The PostgreSQL schema is versioned with Alembic. After starting the local database, apply the
-current schema revision before loading events, training models, or serving the API:
+O NEXUS não é uma plataforma de produção nem promete "prever incidentes" de forma autônoma. É uma base técnica reproduzível para demonstrar como as disciplinas de dados, backend, ML e operações se conectam em um fluxo de AIOps auditável.
 
-```powershell
-docker compose up -d postgres
-python -m alembic upgrade head
+## O problema que o projeto resolve
+
+Times de tecnologia recebem telemetria em grande volume: CPU, memória, latência e erros. Sem um contrato comum, validação e priorização, esses dados viram ruído. O NEXUS organiza o caminho entre um evento operacional e um sinal que pode apoiar uma investigação:
+
+```mermaid
+flowchart LR
+    A[Gerador determinístico\nde eventos] --> B[Ingestão CSV ou\nPOST /events]
+    B --> C{Contrato e\nqualidade válidos?}
+    C -- Não --> D[Rejeição explícita\ncom detalhe do erro]
+    C -- Sim --> E[(PostgreSQL)]
+    E --> F[Analytics\npor métrica e serviço]
+    E --> G[Features temporais]
+    G --> H[Modelo temporal\nRandom Forest]
+    H --> I[Registro de execução\ne previsões]
+    E --> J[FastAPI autenticada]
+    I --> J
+    J --> K[Prometheus]
+    E --> L[Grafana]
+    K --> L
 ```
 
-Repositories do not create tables. This keeps DDL auditable and prevents application versions from
-silently mutating a shared database.
+O fluxo é deliberadamente separável: cada bloco pode ser substituído sem reescrever os demais. Por exemplo, o CSV sintético pode dar lugar a um conector de observabilidade; o controle local por API key pode ser substituído por SSO; o banco local pode migrar para um serviço gerenciado.
 
-🚧 **Em desenvolvimento**
+## O que está implementado
 
-NEXUS é uma plataforma local de operações e inteligência de TI orientada por IA. O projeto evoluirá incrementalmente para coletar, validar, armazenar e analisar dados sintéticos de operações, detectar anomalias e apoiar a investigação de incidentes.
+| Camada | Implementação atual | Decisão técnica |
+| --- | --- | --- |
+| Contrato de dados | `OperationalEvent` imutável, com ID, timestamp UTC, serviço, host, métrica, valor, severidade e rótulo sintético | Um único contrato reduz formatos paralelos e torna o pipeline testável. |
+| Dados | Geradores sintéticos fixos e temporais, determinísticos por seed | Demonstração e testes repetíveis; não representa telemetria real. |
+| Qualidade | Regras para duplicidade, ordem temporal, métrica e faixa plausível | Dado inválido é separado de sinal operacional anômalo. |
+| Persistência | PostgreSQL 17, SQL explícito, UPSERT por `event_id`, migrations Alembic | Reexecuções são idempotentes e o schema é versionado. |
+| Analytics | Agregações por métrica e priorização de serviços | Incidente ainda é um sinal derivado, não uma entidade de negócio definitiva. |
+| ML | `IsolationForest` por métrica e `RandomForest` temporal com split cronológico 60/20/20 | Evita comparar unidades incompatíveis e reduz vazamento temporal. |
+| API | FastAPI, healthcheck público e endpoints operacionais autenticados | A API lê/escreve dados; não treina modelo dentro de uma requisição HTTP. |
+| Observabilidade | métricas Prometheus e dashboard Grafana provisionado | Mede o comportamento da própria API e exibe dados operacionais persistidos. |
+| Qualidade de entrega | pytest, Ruff, GitHub Actions e Compose | Validação automatizada antes de integrar mudanças. |
 
-## Objetivo
+## Demonstração reproduzível
 
-Construir uma base profissional e reproduzível para explorar AIOps, engenharia de dados, Machine Learning e observabilidade.
-
-## Visão arquitetural
-
-Diagrama arquitetural: reservado para uma etapa futura, após a definição dos fluxos de dados e requisitos de negócio.
-
-## Stack atual
-
-- Python 3.13
-- pytest
-- Ruff
-- Docker Compose
-- PostgreSQL 17
-- psycopg 3
-
-## Como executar
-
-Crie e ative o ambiente virtual, instale as dependências de desenvolvimento e execute as verificações:
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -e ".[dev]"
-pytest
-ruff check .
-ruff format --check .
-```
-
-## Dados sintéticos de operações
-
-O primeiro dataset contém medições de CPU, memória, latência HTTP e taxa de erros de hosts e serviços fictícios. Cada evento possui identificador, timestamp UTC, host, serviço, métrica, unidade, severidade e indicador de anomalia.
-
-O gerador usa uma seed fixa por padrão, portanto produz sempre os mesmos 120 eventos — importante para testes reproduzíveis e comparação futura de modelos.
-
-```powershell
-.\.venv\Scripts\python.exe scripts/generate_synthetic_events.py
-```
-
-O CSV gerado em `data/synthetic/operational_events.csv` é um artefato local ignorado pelo Git e pode ser recriado a qualquer momento.
-
-Para experimentos temporais, geração de dashboards ou avaliação futura de modelos, gere três dias de dados em intervalos de cinco minutos. O dataset inclui ciclo diário de carga e janelas recorrentes de degradação:
-
-```powershell
-.\.venv\Scripts\python.exe scripts/generate_temporal_training_data.py
-```
-
-Os dois datasets seguem o mesmo contrato de evento. Componentes futuros devem reutilizar esse contrato, não criar formatos paralelos.
-
-## Ingestão de dados
-
-A ingestão atual lê o CSV e converte cada linha em um `OperationalEvent` validado. Ela exige todas as colunas do contrato, timestamps com timezone, valores numéricos válidos e `is_anomaly` como `true` ou `false`. Ainda não há persistência: a próxima etapa de qualidade de dados avaliará o conteúdo antes de introduzirmos o PostgreSQL.
-
-## Qualidade de dados
-
-Após a ingestão, o NEXUS avalia cada lote e produz um relatório sem interromper a análise do restante dos eventos. As regras atuais verificam IDs duplicados, ordenação temporal, métricas conhecidas e faixas plausíveis de valor. Essa separação evita confundir arquivo malformado (erro de ingestão) com dado operacional suspeito (problema de qualidade).
-
-## Camada PostgreSQL
-
-Eventos aprovados são persistidos na tabela `operational_events` do PostgreSQL local. A camada usa `psycopg` e SQL explícito, com `event_id` como chave primária e upsert para tornar reexecuções idempotentes.
-
-```powershell
-.\.venv\Scripts\python.exe scripts/generate_synthetic_events.py
-.\.venv\Scripts\python.exe scripts/load_synthetic_events.py
-```
-
-Para executar o teste de integração com o PostgreSQL do Compose:
-
-```powershell
-$env:RUN_POSTGRES_INTEGRATION = "1"
-pytest -m integration
-```
-
-## Incident Analytics
-
-Nesta fase, incidentes são indicadores derivados de eventos anômalos — não uma entidade de negócio definitiva. O relatório agrega volume, média, mínimo, máximo e anomalias por métrica, além de priorizar serviços pela quantidade de sinais anômalos e críticos.
-
-```powershell
-.\.venv\Scripts\python.exe scripts/analyze_incidents.py
-```
-
-## Anomaly Detection
-
-O baseline de ML usa `IsolationForest` separadamente para cada métrica. Ele aprende somente com os valores medidos e não usa `is_anomaly` no treinamento; o rótulo sintético serve apenas para avaliar precisão e recall. O agrupamento por métrica impede a comparação indevida entre unidades incompatíveis, como porcentagens e milissegundos.
-
-```powershell
-.\.venv\Scripts\python.exe scripts/detect_anomalies.py
-```
-
-## ML Prediction
-
-The supervised baseline estimates anomaly risk from metric, metric value, relative deviation from the synthetic metric baseline, service, and host. It uses a class-balanced Random Forest with four-fold stratified cross-validation and a 0.20 alert threshold to favor recall in this small, imbalanced dataset. Severity, event ID, and `is_anomaly` are excluded from features to avoid information leakage. Fixed baselines are deliberately limited to this synthetic stage; production requires rolling historical baselines.
-
-```powershell
-.\.venv\Scripts\python.exe scripts/predict_anomaly_risk.py
-```
-
-## Temporal validation
-
-The temporal pipeline derives lag, rolling mean, rolling standard deviation, deviation from the prior window, and hour-of-day features. It splits whole timestamps into train (60%), validation (20%), and test (20%) partitions. The alert threshold is selected on validation only; test data remains isolated until final evaluation.
-
-```powershell
-.\.venv\Scripts\python.exe scripts/generate_temporal_training_data.py
-.\.venv\Scripts\python.exe scripts/evaluate_temporal_risk.py
-```
-
-## API
-
-The initial FastAPI layer is read-only and exposes data already persisted in PostgreSQL. It does not train ML models during HTTP requests.
-
-```powershell
-.\.venv\Scripts\uvicorn.exe nexus.api.app:app --reload
-```
-
-Available routes: `GET /health`, `GET /events?limit=100&offset=0`, `GET /analytics/metrics`, `GET /analytics/services`, and interactive documentation at `/docs`.
-
-## API access control
-
-`/health` remains public for container orchestration. Every operational and ML read endpoint fails
-closed unless it receives a configured `X-NEXUS-API-Key` with the `reader` role. Set
-`NEXUS_API_KEYS` in `.env` as comma-separated `api-key:role` entries, then send the key only in
-the request header. This is a local machine-to-machine control plane; a future identity-provider
-integration can replace the credential source without changing endpoint authorization rules.
-
-## Model registry
-
-The temporal model can be trained and registered locally. The serialized `joblib` artifact stays in `data/models/`, while the run metadata, evaluation metrics, and held-out predictions are stored in PostgreSQL and exposed by the API.
-
-```powershell
-.\.venv\Scripts\python.exe scripts/generate_temporal_training_data.py
-.\.venv\Scripts\python.exe scripts/train_and_register_temporal_model.py
-```
-
-Read registered runs at `GET /ml/runs` and their persisted predictions at `GET /ml/runs/{model_run_id}/predictions`.
-
-## Continuous Integration
-
-GitHub Actions runs tests, Ruff lint, and Ruff format checks on every push and on pull requests targeting `main`. PostgreSQL integration tests remain opt-in and are not run in CI until the workflow provisions a database service.
-
-Para preparar o banco local, copie `.env.example` para `.env`, ajuste a senha local e execute:
-
-```powershell
-docker compose up -d
-docker compose ps
-```
-
-## MVP technical completion
-
-This MVP is complete for local, authenticated operational-event ingestion, persistence, analysis,
-ML experimentation, and read access. It is intentionally not a production AIOps platform: external
-telemetry connectors, SSO, alert delivery, automated remediation, and managed model lifecycle are
-separate future products with their own operational requirements.
-
-## Local observability dashboard
-
-Prometheus collects request volume and latency from `GET /metrics`; Grafana provisions the
-`NEXUS API Overview` dashboard automatically. Start the API on the host, then start the optional
-observability profile:
-
-```powershell
-.\.venv\Scripts\uvicorn.exe nexus.api.app:app --reload
-docker compose --profile observability up -d
-```
-
-Open Grafana at `http://localhost:3000` and Prometheus at `http://localhost:9090`. The dashboard
-shows request rate, p95 latency, request volume by route/status, persisted events, anomalous events,
-and services with critical signals. Grafana reads operational panels directly from the local
-PostgreSQL database. Change the local Grafana password in `.env` before using it beyond a private
-demonstration.
-
-### Demonstration setup
-
-With PostgreSQL running, this command applies migrations, generates the deterministic three-day
-dataset, sends it through the same quality gate used by HTTP ingestion, persists it, and registers
-a temporal model run. It uses UPSERT and does not delete existing records.
+Com Docker iniciado e o ambiente Python instalado, o comando abaixo aplica migrations, gera três dias de eventos, executa a validação de qualidade, persiste os aprovados e registra uma execução de modelo. Ele não apaga dados existentes.
 
 ```powershell
 .\.venv\Scripts\python.exe scripts/run_demo.py
 ```
 
-Then run the API and optional observability stack:
+Resultado esperado do cenário padrão: **3.456 eventos** (4 séries a cada 5 minutos por 3 dias) e previsões persistidas de uma execução temporal. Como a geração é determinística, resultados podem ser comparados entre máquinas e mudanças de código.
+
+Depois, exponha a API e a observabilidade:
 
 ```powershell
 .\.venv\Scripts\uvicorn.exe nexus.api.app:app --reload
 docker compose --profile observability up -d
 ```
 
-### LinkedIn timelapse recording
+| Serviço | Endereço | Finalidade |
+| --- | --- | --- |
+| API e Swagger | [http://localhost:8000/docs](http://localhost:8000/docs) | Exercitar os endpoints. |
+| Métricas | [http://localhost:8000/metrics](http://localhost:8000/metrics) | Exposição Prometheus. |
+| Grafana | [http://localhost:3000](http://localhost:3000) | Dashboard `NEXUS / NEXUS API Overview`. |
+| Prometheus | [http://localhost:9090](http://localhost:9090) | Inspeção das séries coletadas. |
 
-After closing personal windows and disabling notifications, run the local recorder:
+## Processo técnico em detalhe
+
+1. O gerador cria eventos com timestamp UTC e padrões temporais, incluindo janelas controladas de degradação.
+2. A ingestão converte o CSV ou payload HTTP para o contrato de domínio. Tipos e campos obrigatórios são validados antes de tocar o banco.
+3. O validador de qualidade analisa o lote. Erro de formato impede a entrada; problemas de qualidade são reportados de forma explícita.
+4. O repositório PostgreSQL persiste eventos aprovados. `event_id` é chave primária e o UPSERT impede duplicação em uma nova execução.
+5. Analytics calcula volume, média, mínimo, máximo e anomalias por métrica; serviços são ordenados por sinais anômalos e críticos.
+6. O pipeline temporal cria lags, janelas móveis, desvio da janela anterior e hora do dia. O modelo aprende somente com a partição de treino; o limiar é escolhido na validação e o teste fica isolado até o fim.
+7. A execução do modelo registra metadados, métricas e previsões no PostgreSQL. O artefato `joblib` permanece local e ignorado pelo Git.
+8. A FastAPI disponibiliza o estado persistido. Exceto `/health`, os endpoints exigem `X-NEXUS-API-Key` com papel `reader`.
+9. Middleware registra `X-Request-ID`, duração e status. Prometheus coleta as métricas; Grafana combina essas séries com consultas ao PostgreSQL.
+
+Consulte [a arquitetura detalhada](docs/architecture.md) para os limites e decisões de cada etapa.
+
+## Stack
+
+- **Python 3.13**: domínio, pipeline, API e scripts.
+- **FastAPI + Uvicorn**: interface HTTP e documentação OpenAPI automática.
+- **PostgreSQL 17 + psycopg 3 + Alembic**: dados transacionais e schema versionado.
+- **scikit-learn + joblib**: baselines de anomalia e risco temporal.
+- **Docker Compose**: ambiente local de banco e observabilidade.
+- **Prometheus + Grafana**: métricas e visualização operacional.
+- **pytest + Ruff + GitHub Actions**: testes, lint, formatação e CI.
+
+## Execução local
+
+Pré-requisitos: Python 3.13, Docker Desktop com o daemon ativo e Git. As imagens, containers e volumes Docker podem ficar no disco configurado pelo Docker Desktop; o código e `.venv` permanecem no diretório do projeto.
 
 ```powershell
-.\scripts\record_linkedin_demo.ps1
+Copy-Item .env.example .env
+# Edite .env: use senhas locais fortes e defina NEXUS_API_KEYS.
+
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
+
+docker compose up -d postgres
+python -m alembic upgrade head
+pytest
+ruff check .
+ruff format --check .
 ```
 
-It prepares the demonstrator, opens Grafana and API documentation, and records the desktop to
-`artifacts/videos/`. Press `Ctrl+C` in the recording terminal to stop. Videos are intentionally
-ignored by Git.
+O guia completo, inclusive comandos de integração e solução de problemas, está em [docs/local-development.md](docs/local-development.md).
 
-## Roadmap
+## Segurança e limites
 
-- [x] Environment & Project Foundation
-- [x] Synthetic IT Data
-- [x] Data Ingestion
-- [x] Data Quality
-- [x] PostgreSQL Data Layer
-- [x] Incident Analytics
-- [x] ML Prediction
-- [x] Anomaly Detection
-- [ ] MLflow
-- [x] FastAPI
-- [x] API request correlation and structured completion logs
-- [ ] Local AI Assistant
-- [ ] AIOps Intelligence
-- [x] Automated Tests
-- [x] CI with PostgreSQL integration
-- [x] Production-like local database environment
+- `.env`, dados gerados, modelos e vídeos locais são ignorados pelo Git. Nunca faça commit de credenciais.
+- A autenticação atual é adequada apenas como controle local máquina-a-máquina. Não substitui gestão de identidade, rotação de segredo, TLS ou auditoria corporativa.
+- Os dados são sintéticos e os rótulos existem para avaliar os baselines. Métricas de ML não devem ser interpretadas como desempenho em produção.
+- Não há conectores externos, SSO, alertas, remediação automática, feature store, MLflow ou ciclo de vida gerenciado de modelos.
+
+## Validação
+
+O repositório mantém testes unitários e de integração, e o CI executa testes e verificações Ruff a cada push e pull request. A validação local completa inclui:
+
+```powershell
+$env:RUN_POSTGRES_INTEGRATION = "1"
+pytest
+ruff check .
+ruff format --check .
+docker compose config --quiet
+```
+
+## Documentação
+
+- [Arquitetura e decisões técnicas](docs/architecture.md)
+- [Guia de desenvolvimento e operação local](docs/local-development.md)
+- [Contrato de eventos operacionais](docs/event-contract.md)
+- [Estratégia de testes e CI](docs/testing-and-ci.md)
+- [Roteiro de demonstração para portfólio](docs/portfolio-demo.md)
+- [ADRs](docs/adr/): decisões arquiteturais registradas no tempo.
+
+## Referência de apresentação
+
+A organização desta documentação foi inspirada no padrão de clareza e fluxo do projeto [FortaDocs — Termos de Responsabilidade](https://github.com/LucasNicotari/fortatech-termos-responsabilidade), mas a arquitetura, o domínio e a implementação do NEXUS são independentes.
