@@ -206,6 +206,18 @@ Then run the API and optional observability stack:
 docker compose --profile observability up -d
 ```
 
+### LinkedIn timelapse recording
+
+After closing personal windows and disabling notifications, run the local recorder:
+
+```powershell
+.\scripts\record_linkedin_demo.ps1
+```
+
+It prepares the demonstrator, opens Grafana and API documentation, and records the desktop to
+`artifacts/videos/`. Press `Ctrl+C` in the recording terminal to stop. Videos are intentionally
+ignored by Git.
+
 ## Roadmap
 
 - [x] Environment & Project Foundation

@@ -29,6 +29,10 @@ data/synthetic/*
 data/models/*
 !data/models/.gitkeep
 
+# Local portfolio recordings
+artifacts/videos/*
+!artifacts/videos/.gitkeep
+
 # Editors and operating systems
 .vscode/
 .idea/
