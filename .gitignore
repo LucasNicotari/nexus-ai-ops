@@ -33,6 +33,9 @@ data/models/*
 artifacts/videos/*
 !artifacts/videos/.gitkeep
 
+# Personal reports generated outside the technical documentation set
+docs/reports/
+
 # Editors and operating systems
 .vscode/
 .idea/
